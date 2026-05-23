@@ -1,1 +1,1 @@
-export const baseUrl = process.env.BACKEND_URL; // Your Local Backend URL
+export const baseUrl = process.env.EXPO_PUBLIC_BACKEND_URL; // Your Local Backend URL

@@ -1,0 +1,40 @@
+name: Expo EAS Build
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    name: Validate and Build App
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: 🩺 Run Expo Doctor (Validate Configuration)
+        run: npx expo-doctor
+
+      - name: Setup Expo and EAS CLI
+        uses: expo/expo-github-action@v8
+        with:
+          expo-version: latest
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Trigger EAS Android Build (Preview)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          EXPO_PUBLIC_BACKEND_URL: ${{ secrets.EXPO_PUBLIC_BACKEND_URL }}
+        run: eas build --platform android --profile preview --non-interactive
