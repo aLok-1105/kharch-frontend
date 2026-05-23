@@ -23,7 +23,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: 🩺 Run Expo Doctor (Validate Configuration)
+      - name: Run Expo Doctor (Validate Configuration)
         run: npx expo-doctor
 
       - name: Setup Expo and EAS CLI
@@ -33,8 +33,27 @@ jobs:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
 
-      - name: Trigger EAS Android Build (Preview)
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      - name: Inject Backend URL into eas.json
         env:
           EXPO_PUBLIC_BACKEND_URL: ${{ secrets.EXPO_PUBLIC_BACKEND_URL }}
+        run: |
+          node -e "
+            const fs = require('fs');
+            const eas = JSON.parse(fs.readFileSync('eas.json', 'utf8'));
+            const backendUrl = process.env.EXPO_PUBLIC_BACKEND_URL;
+            if (!backendUrl) {
+              console.error('EXPO_PUBLIC_BACKEND_URL secret is missing!');
+              process.exit(1);
+            }
+            if (!eas.build) eas.build = {};
+            for (const profile of Object.keys(eas.build)) {
+              if (!eas.build[profile].env) eas.build[profile].env = {};
+              eas.build[profile].env.EXPO_PUBLIC_BACKEND_URL = backendUrl;
+            }
+            fs.writeFileSync('eas.json', JSON.stringify(eas, null, 2));
+            console.log('Injected EXPO_PUBLIC_BACKEND_URL into eas.json successfully.');
+          "
+
+      - name: Trigger EAS Android Build (Preview)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: eas build --platform android --profile preview --non-interactive
